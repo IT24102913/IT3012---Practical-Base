@@ -2,6 +2,51 @@
 import random
 import tkinter as tk
 
+class SimpleReflexAgent:
+    """A simple reflex agent using purely IF-THEN rules."""
+    
+    def sense_and_act(self, percept: dict) -> str:
+        if percept.get('food_here'):
+            return 'Stay'
+        elif percept.get('wall_ahead'):
+            return 'Up'
+        else:
+            return 'Right'
+
+
+class ModelBasedAgent:
+    """A model-based agent that uses internal memory (state) to escape loops."""
+    
+    def __init__(self):
+        self.last_action = None
+        self.stuck_count = 0
+
+    def sense_and_act(self, percept: dict) -> str:
+        if percept.get('food_here'):
+            self.last_action = 'Stay'
+            return 'Stay'
+
+        if percept.get('wall_ahead'):
+            self.stuck_count += 1
+            if self.stuck_count == 1:
+                self.last_action = 'Up'
+            elif self.stuck_count == 2:
+                self.last_action = 'Left'
+            elif self.stuck_count == 3:
+                self.last_action = 'Down'
+            else:
+                self.last_action = 'Right'
+            return self.last_action
+        else:
+            self.stuck_count = 0
+            if self.last_action in ['Up', 'Down', 'Left', 'Right']:
+                return self.last_action
+            else:
+                self.last_action = 'Right'
+                return 'Right'
+
+
+
 
 class VisualGridHuntGame:
     """A flexible Pacman-style grid environment with support for configurable opponents and larger scales."""
@@ -10,6 +55,7 @@ class VisualGridHuntGame:
         self.width = width
         self.height = height
         self.agent_pos = [0, 0]  # Starting position (x, y)
+        self.facing = 'Up'  # Current facing direction
 
         if custom_walls is not None:
             self.walls = set(custom_walls)
@@ -40,19 +86,33 @@ class VisualGridHuntGame:
         self.collision = False
 
     def get_percept(self) -> dict:
+        ahead_pos = list(self.agent_pos)
+        if self.facing == 'Up':
+            ahead_pos[1] += 1
+        elif self.facing == 'Down':
+            ahead_pos[1] -= 1
+        elif self.facing == 'Left':
+            ahead_pos[0] -= 1
+        elif self.facing == 'Right':
+            ahead_pos[0] += 1
+
+        wall_ahead = (
+            tuple(ahead_pos) in self.walls or
+            ahead_pos[0] < 0 or ahead_pos[0] >= self.width or
+            ahead_pos[1] < 0 or ahead_pos[1] >= self.height
+        )
+        
         return {
-            'agent_pos': list(self.agent_pos),
-            'opponent_positions': [list(op) for op in self.opponents],
-            'smells_food': tuple(self.agent_pos) in self.food_positions,
-            'hit_wall': tuple(self.agent_pos) in self.walls,
-            'collision': self.collision,
-            'score': self.score,
-            'remaining_food': len(self.food_positions)
+            'wall_ahead': wall_ahead,
+            'food_here': tuple(self.agent_pos) in self.food_positions
         }
 
     def execute_action(self, action: str):
         self.steps += 1
         new_pos = list(self.agent_pos)
+
+        if action in ['Up', 'Down', 'Left', 'Right']:
+            self.facing = action
 
         if action == 'Up':
             new_pos[1] = min(self.height - 1, new_pos[1] + 1)
@@ -162,10 +222,11 @@ class GridGameGUI:
 
     def run_loop(self):
         self.btn.config(state="disabled")
+        agent = ModelBasedAgent()
 
         def step():
             if not self.env.is_done():
-                action = random.choice(['Up', 'Down', 'Left', 'Right'])
+                action = agent.sense_and_act(self.env.get_percept())
                 self.env.execute_action(action)
 
                 self.draw_grid()
