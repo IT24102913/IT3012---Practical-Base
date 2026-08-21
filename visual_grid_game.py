@@ -1,49 +1,10 @@
 # visual_grid_game.py
 import random
 import tkinter as tk
-
-class SimpleReflexAgent:
-    """A simple reflex agent using purely IF-THEN rules."""
-    
-    def sense_and_act(self, percept: dict) -> str:
-        if percept.get('food_here'):
-            return 'Stay'
-        elif percept.get('wall_ahead'):
-            return 'Up'
-        else:
-            return 'Right'
+from agent import SimpleReflexAgent, ModelBasedAgent, SearchAgent
 
 
-class ModelBasedAgent:
-    """A model-based agent that uses internal memory (state) to escape loops."""
-    
-    def __init__(self):
-        self.last_action = None
-        self.stuck_count = 0
 
-    def sense_and_act(self, percept: dict) -> str:
-        if percept.get('food_here'):
-            self.last_action = 'Stay'
-            return 'Stay'
-
-        if percept.get('wall_ahead'):
-            self.stuck_count += 1
-            if self.stuck_count == 1:
-                self.last_action = 'Up'
-            elif self.stuck_count == 2:
-                self.last_action = 'Left'
-            elif self.stuck_count == 3:
-                self.last_action = 'Down'
-            else:
-                self.last_action = 'Right'
-            return self.last_action
-        else:
-            self.stuck_count = 0
-            if self.last_action in ['Up', 'Down', 'Left', 'Right']:
-                return self.last_action
-            else:
-                self.last_action = 'Right'
-                return 'Right'
 
 
 
@@ -104,7 +65,11 @@ class VisualGridHuntGame:
         
         return {
             'wall_ahead': wall_ahead,
-            'food_here': tuple(self.agent_pos) in self.food_positions
+            'food_here': tuple(self.agent_pos) in self.food_positions,
+            'agent_pos': tuple(self.agent_pos),
+            'grid_size': (self.width, self.height),
+            'walls': list(self.walls),
+            'all_food': list(self.food_positions)
         }
 
     def execute_action(self, action: str):
@@ -222,7 +187,7 @@ class GridGameGUI:
 
     def run_loop(self):
         self.btn.config(state="disabled")
-        agent = ModelBasedAgent()
+        agent = SearchAgent(active_algo='BFS')
 
         def step():
             if not self.env.is_done():
@@ -244,4 +209,4 @@ if __name__ == "__main__":
     root = tk.Tk()
     # Try a larger grid size like 12x12 with 15 food and 3 opponents!
     app = GridGameGUI(root, width=12, height=12, num_food=15, num_opponents=0)
-    root.mainloop()j
+    root.mainloop()
