@@ -1,4 +1,5 @@
 # agent.py
+import math
 import random
 from collections import deque
 import heapq
@@ -60,11 +61,19 @@ class GreedyGridAgent:
 
 
 class SearchAgent:
-    """A Goal-Based / Planning Agent supporting BFS, DFS, and UCS."""
+    """A Goal-Based / Planning Agent supporting BFS, DFS, UCS, and A*."""
 
     def __init__(self, active_algo: str = 'BFS'):
         self.plan = []
         self.active_algo = active_algo
+
+    def manhattan_distance(self, pos, goal):
+        """Calculates Manhattan distance: h(n) = |x1 - x2| + |y1 - y2|."""
+        return int(abs(pos[0] - goal[0]) + abs(pos[1] - goal[1]))
+
+    def euclidean_distance(self, pos, goal):
+        """Calculates Euclidean distance: h(n) = sqrt((x1 - x2)^2 + (y1 - y2)^2)."""
+        return math.sqrt((pos[0] - goal[0]) ** 2 + (pos[1] - goal[1]) ** 2)
 
     def bfs_search(self, start_pos, goal_pos, walls, grid_size):
         """Breadth-First Search using a FIFO queue."""
@@ -182,10 +191,58 @@ class SearchAgent:
 
         return []
 
+    def astar_search(self, start_pos, goal_pos, walls, grid_size, heuristic_type='manhattan'):
+        """A* Search using a Priority Queue and Heuristic function."""
+        start = tuple(start_pos)
+        goal = tuple(goal_pos)
+        width, height = grid_size
+        walls_set = set(tuple(w) for w in walls)
+
+        if start == goal:
+            return []
+
+        def get_heuristic(pos):
+            if heuristic_type == 'euclidean':
+                return self.euclidean_distance(pos, goal)
+            return self.manhattan_distance(pos, goal)
+
+        h_start = get_heuristic(start)
+        frontier = [(h_start, 0, start, [])]
+        heapq.heapify(frontier)
+        reached_states = set()
+
+        actions = [
+            ('Up', (0, 1)),
+            ('Down', (0, -1)),
+            ('Left', (-1, 0)),
+            ('Right', (1, 0))
+        ]
+
+        while frontier:
+            f_cost, g_cost, curr_pos, path = heapq.heappop(frontier)
+
+            if curr_pos == goal:
+                return path
+
+            if curr_pos in reached_states:
+                continue
+            reached_states.add(curr_pos)
+
+            for action, (dx, dy) in actions:
+                next_pos = (curr_pos[0] + dx, curr_pos[1] + dy)
+                if 0 <= next_pos[0] < width and 0 <= next_pos[1] < height:
+                    if next_pos not in walls_set and next_pos not in reached_states:
+                        g_new = g_cost + 1
+                        h_new = get_heuristic(next_pos)
+                        f_new = g_new + h_new
+                        heapq.heappush(frontier, (f_new, g_new, next_pos, path + [action]))
+
+        return []
+
     def sense_and_act(self, percept: dict) -> str:
         """Executes offline plan step-by-step or computes a new plan to the closest food."""
         if not self.plan:
-            all_food = percept.get('all_food', [])
+            all_food = percept.get('remaining_food') or percept.get('all_food', [])
             if not all_food:
                 return 'Stay'
 
@@ -196,7 +253,7 @@ class SearchAgent:
             # Find closest food pellet using Manhattan distance
             closest_food = min(
                 all_food,
-                key=lambda f: abs(f[0] - agent_pos[0]) + abs(f[1] - agent_pos[1])
+                key=lambda f: self.manhattan_distance(agent_pos, f)
             )
 
             # Execute the search method matching self.active_algo
@@ -206,10 +263,13 @@ class SearchAgent:
                 self.plan = self.dfs_search(agent_pos, closest_food, walls, grid_size)
             elif self.active_algo == 'UCS':
                 self.plan = self.ucs_search(agent_pos, closest_food, walls, grid_size)
+            elif self.active_algo == 'AStar':
+                self.plan = self.astar_search(agent_pos, closest_food, walls, grid_size)
             else:
                 self.plan = self.bfs_search(agent_pos, closest_food, walls, grid_size)
 
         if self.plan:
             return self.plan.pop(0)
 
-        return 'Stay'
+        return 'Stay'
+

@@ -187,7 +187,7 @@ class GridGameGUI:
 
     def run_loop(self):
         self.btn.config(state="disabled")
-        agent = SearchAgent(active_algo='BFS')
+        agent = SearchAgent(active_algo='AStar')
 
         def step():
             if not self.env.is_done():

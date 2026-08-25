@@ -105,6 +105,80 @@ class TestPractical3_SearchAgent(unittest.TestCase):
         self.assertTrue(is_empty_or_none, "BFS should return None or [] when the goal is unreachable.")
 
 
+class TestPractical4_AStarAgent(unittest.TestCase):
+    """
+    Tests for Practical 4: Informed Search (A* Search).
+    Focuses on heuristic functions (Manhattan, Euclidean) and A* algorithm optimization.
+    """
+
+    def setUp(self):
+        try:
+            self.search_agent = SearchAgent(active_algo='AStar')
+        except NameError:
+            self.fail("SearchAgent class not found.")
+
+    def test_heuristic_checkpoint(self):
+        """Testing Checkpoint: Verify Manhattan=7 and Euclidean=5.0 for (0,0) to (3,4)."""
+        start = (0, 0)
+        goal = (3, 4)
+
+        manhattan_val = self.search_agent.manhattan_distance(start, goal)
+        euclidean_val = self.search_agent.euclidean_distance(start, goal)
+
+        self.assertEqual(manhattan_val, 7, f"Expected Manhattan distance 7, got {manhattan_val}")
+        self.assertAlmostEqual(euclidean_val, 5.0, places=5, msg=f"Expected Euclidean distance 5.0, got {euclidean_val}")
+
+    def test_astar_shortest_path_manhattan(self):
+        """Test: A* with Manhattan heuristic finds optimal path in maze."""
+        grid_size = (4, 4)
+        start_pos = (0, 0)
+        goal_pos = (3, 3)
+        walls = [(1, 0), (2, 0), (0, 2), (1, 2), (2, 2)]
+
+        path = self.search_agent.astar_search(start_pos, goal_pos, walls, grid_size, heuristic_type='manhattan')
+
+        self.assertIsNotNone(path, "A* returned None. No path found.")
+        self.assertIsInstance(path, list, "A* should return a list of actions.")
+        self.assertEqual(len(path), 6, f"A* did not find the optimal 6-step path. Got {len(path)}.")
+
+    def test_astar_shortest_path_euclidean(self):
+        """Test: A* with Euclidean heuristic finds optimal path in maze."""
+        grid_size = (4, 4)
+        start_pos = (0, 0)
+        goal_pos = (3, 3)
+        walls = [(1, 0), (2, 0), (0, 2), (1, 2), (2, 2)]
+
+        path = self.search_agent.astar_search(start_pos, goal_pos, walls, grid_size, heuristic_type='euclidean')
+
+        self.assertIsNotNone(path, "A* returned None. No path found.")
+        self.assertIsInstance(path, list, "A* should return a list of actions.")
+        self.assertEqual(len(path), 6, f"A* did not find the optimal 6-step path with Euclidean heuristic. Got {len(path)}.")
+
+    def test_astar_unreachable_goal(self):
+        """Test: A* correctly returns empty list when goal is blocked."""
+        grid_size = (3, 3)
+        start_pos = (0, 0)
+        goal_pos = (2, 2)
+        walls = [(1, 2), (2, 1), (1, 1)]
+
+        path = self.search_agent.astar_search(start_pos, goal_pos, walls, grid_size)
+        is_empty_or_none = (path is None) or (len(path) == 0)
+        self.assertTrue(is_empty_or_none, "A* should return None or [] when the goal is unreachable.")
+
+    def test_astar_sense_and_act(self):
+        """Test: sense_and_act executes AStar plan correctly."""
+        percept = {
+            'agent_pos': (0, 0),
+            'remaining_food': [(0, 2)],
+            'walls': [],
+            'grid_size': (5, 5)
+        }
+        action1 = self.search_agent.sense_and_act(percept)
+        self.assertEqual(action1, 'Up', f"Expected first move 'Up', got {action1}")
+        action2 = self.search_agent.sense_and_act(percept)
+        self.assertEqual(action2, 'Up', f"Expected second move 'Up', got {action2}")
+
+
 if __name__ == '__main__':
     # Run the test suite
     print("=== IT3012: Intelligent Agents - Autograder Test Suite ===\n")
